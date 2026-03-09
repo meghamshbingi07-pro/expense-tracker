@@ -1,6 +1,6 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(-45deg,#220000,#550000,#880000,#220000);
+    background: linear-gradient(-45deg,#1a1a1a,#2c2c2c,#000000,#1a1a1a);
     background-size: 400% 400%;
     animation: gradientBG 12s ease infinite;
     margin: 0;
@@ -23,7 +23,7 @@ height:100vh;
 
 .sidebar{
 width:220px;
-background:linear-gradient(180deg,#8b0000,#ff4500);
+background:linear-gradient(180deg,#2c3e50,#34495e);
 color:#ffd700;
 padding:30px 20px;
 }
@@ -99,11 +99,11 @@ color:#eee;
 }
 
 .expense-form button{
-background:linear-gradient(45deg,#8b0000,#ffd700);
+background:linear-gradient(45deg,#2c3e50,#ffd700);
 border:none;
 padding:12px 20px;
 border-radius:8px;
-color:#220000;
+color:#000000;
 font-size:14px;
 cursor:pointer;
 transition:0.3s;
@@ -111,7 +111,7 @@ transition:0.3s;
 
 .expense-form button:hover{
 transform:scale(1.05);
-box-shadow:0 0 20px #0066cc;
+box-shadow:0 0 20px #ffd700;
 }
 
 .loading{
@@ -132,14 +132,14 @@ animation:spin 1s linear infinite;
 
 .container{
     backdrop-filter: blur(15px);
-    background: rgba(255,255,255,0.15);
-    border:1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.7);
+    border:1px solid rgba(255,215,0,0.3);
     padding:50px;
     border-radius:20px;
     width:100%;
     max-width:1200px;
     color:white;
-    box-shadow:0 10px 40px rgba(0,0,0,0.2);
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
 }
 
 h2{
@@ -166,8 +166,8 @@ gap:20px;
 .card{
 padding:20px;
 border-radius:12px;
-background:linear-gradient(135deg,#b22222,#ffd700);
-color:#220000;
+background:linear-gradient(135deg,#34495e,#2c3e50);
+color:#ffd700;
 text-align:center;
 box-shadow:0 10px 20px rgba(0,0,0,0.4);
 transition:0.3s;
@@ -187,8 +187,8 @@ box-shadow:0 15px 30px rgba(0,0,0,0.3);
 
 .card{
     flex:1;
-    background:linear-gradient(135deg,#b22222,#ffd700);
-    color:#220000;
+    background:linear-gradient(135deg,#34495e,#2c3e50);
+    color:#ffd700;
     padding:30px;
     border-radius:15px;
     text-align:center;
@@ -242,15 +242,15 @@ input::placeholder {
 
 input:focus {
     outline: none;
-    box-shadow: 0 0 10px #00bcd4;
+    box-shadow: 0 0 10px #ffd700;
 }
 
 button {
-    background: linear-gradient(45deg,#8b0000,#ffd700);
+    background: linear-gradient(45deg,#2c3e50,#ffd700);
     border: none;
     padding: 15px 30px;
     border-radius: 10px;
-    color: #220000;
+    color: #000000;
     font-size: 16px;
     cursor: pointer;
     transition: 0.3s;
@@ -259,7 +259,7 @@ button {
 }
 
 button:hover {
-    box-shadow: 0 0 20px #0066cc, 0 0 40px #00bcd4;
+    box-shadow: 0 0 20px #ffd700, 0 0 40px #34495e;
     transform: scale(1.05);
 }
 
@@ -275,11 +275,11 @@ gap:30px;
 
 .chart-box,
 .table-box{
-background:rgba(0,0,0,0.3);
+background:rgba(0,0,0,0.5);
 padding:20px;
 border-radius:12px;
 backdrop-filter:blur(10px);
-border:1px solid rgba(255,255,255,0.1);
+border:1px solid rgba(255,215,0,0.2);
 }
 
 .chart-box{
@@ -307,7 +307,7 @@ font-size:14px;
 }
 
 .table-box th{
-background:rgba(255,255,255,0.2);
+background:rgba(255,215,0,0.2);
 }
 
 tr{
@@ -315,12 +315,12 @@ tr{
 }
 
 tbody tr:hover{
-background:rgba(255,255,255,0.1);
+background:rgba(255,215,0,0.1);
 transform:scale(1.01);
 }
 
 .activity{
-background:rgba(255,255,255,0.15);
+background:rgba(0,0,0,0.6);
 padding:20px;
 border-radius:12px;
 backdrop-filter:blur(10px);
@@ -339,7 +339,7 @@ margin:0;
 
 .activity li{
 padding:10px 0;
-border-bottom:1px solid rgba(255,255,255,0.1);
+border-bottom:1px solid rgba(255,215,0,0.2);
 color:white;
 font-size:14px;
 }
