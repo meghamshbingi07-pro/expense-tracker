@@ -162,8 +162,35 @@ loadExpenses()
 
 // deletion helper
 function deleteExpense(id){
+    if (!confirm('Are you sure you want to delete this expense?')) {
+        return;
+    }
+    
+    // Find expense for activity log
+    const expense = allExpenses.find(exp => exp.id === id);
+    
     fetch(`${API_URL}/${id}`, {method:'DELETE'})
-    .then(()=>loadExpenses());
+    .then(() => {
+        // Add to activity log
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        if (expense) {
+            document.getElementById("activityLog").innerHTML =
+                `<li>${timeString}: Deleted ₹${expense.amount} - ${expense.category}</li>` + 
+                document.getElementById("activityLog").innerHTML;
+        }
+        
+        // Animate deletion
+        document.querySelector(".main").animate(
+            [{opacity:1},{opacity:0.8},{opacity:1}],
+            {duration:500}
+        );
+        
+        loadExpenses();
+    })
+    .catch(error => {
+        alert("Error deleting expense: " + error.message);
+    });
 }
 
 function loadExpenses(){
@@ -227,25 +254,30 @@ if(pieChart){
 pieChart.destroy()
 }
 
-const monthlyData = {}
+// Monthly chart with all 12 months
+const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monthlyTotals = new Array(12).fill(0);
+
+// Category data
 const categoryData = {}
 
 expenses.forEach(exp => {
-    const month = new Date(exp.date).toLocaleString('default', { month: 'short' })
-    monthlyData[month] = (monthlyData[month] || 0) + exp.amount
-    categoryData[exp.category] = (categoryData[exp.category] || 0) + exp.amount
+    // Calculate monthly totals
+    const expenseDate = new Date(exp.date);
+    const monthIndex = expenseDate.getMonth();
+    monthlyTotals[monthIndex] += exp.amount;
+    
+    // Calculate category totals
+    categoryData[exp.category] = (categoryData[exp.category] || 0) + exp.amount;
 })
-
-const labels = Object.keys(monthlyData)
-const data = Object.values(monthlyData)
 
 chart=new Chart(document.getElementById("expenseChart"),{
     type:"line",
     data:{
-        labels:labels,
+        labels:monthNames,
         datasets:[{
             label:"Monthly Expenses",
-            data:data,
+            data:monthlyTotals,
             backgroundColor:"rgba(255, 110, 196, 0.2)",
             borderColor:"#ff6ec4",
             borderWidth:3,
@@ -255,6 +287,10 @@ chart=new Chart(document.getElementById("expenseChart"),{
     },
     options:{
         responsive:true,
+        animation:{
+            duration:1200,
+            easing:'easeOutQuart'
+        },
         plugins:{
             title:{
                 display:true,
@@ -264,13 +300,22 @@ chart=new Chart(document.getElementById("expenseChart"),{
                     size:16,
                     weight:'bold'
                 }
+            },
+            legend:{
+                position:'bottom',
+                labels:{
+                    color:'#ffffff'
+                }
             }
         },
         scales:{
             y:{
                 beginAtZero:true,
                 ticks:{
-                    color:'white'
+                    color:'white',
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
                 }
             },
             x:{
@@ -300,6 +345,10 @@ pieChart = new Chart(document.getElementById("categoryChart"),{
     },
     options:{
         responsive:true,
+        animation:{
+            duration:1200,
+            easing:'easeOutQuart'
+        },
         plugins:{
             title:{
                 display:true,
