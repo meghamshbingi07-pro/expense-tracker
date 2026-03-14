@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=rm20260315">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -30,6 +30,10 @@
 <div class="topbar">
 
 <h1>Expense Dashboard</h1>
+
+<button id="themeToggle" type="button">
+🌙 Toggle Theme
+</button>
 
 <div class="expense-form">
 
@@ -72,6 +76,17 @@
 <p id="topCategory">-</p>
 </div>
 
+<div class="dashboard-card">
+    <h3>Monthly Budget</h3>
+    <h2 id="budgetAmount">₹20000</h2>
+
+    <div class="progress-bar">
+        <div id="budgetProgress"></div>
+    </div>
+
+    <p id="budgetText">₹0 spent</p>
+</div>
+
 </div>
 
 <div class="analytics">
@@ -80,13 +95,29 @@
 <canvas id="expenseChart"></canvas>
 </div>
 
-<div class="chart-box">
+<div class="chart-card">
 <canvas id="categoryChart"></canvas>
+</div>
+
+<div class="chart-card">
+<h3>Category Summary</h3>
+<div id="categorySummary"></div>
 </div>
 
 <div class="table-box">
 
 <div class="table-controls">
+<div class="filter-group">
+<div class="filter-container">
+<label for="filterSelect">Filter:</label>
+<select id="filterSelect" onchange="applyFilter()">
+    <option value="all">All</option>
+    <option value="today">Today</option>
+    <option value="month">This Month</option>
+    <option value="year">This Year</option>
+</select>
+</div>
+
 <select id="categoryFilter" onchange="filterByCategory()">
     <option value="">All Categories</option>
     <option value="Food">🍔 Food</option>
@@ -101,11 +132,28 @@
     <option value="Utilities">⚡ Utilities</option>
 </select>
 
+<select id="timeFilter" onchange="filterByTimeRange()">
+    <option value="">All Time</option>
+    <option value="week">This Week</option>
+    <option value="month">This Month</option>
+    <option value="year">This Year</option>
+</select>
+</div>
+
 <div class="export-buttons">
     <button onclick="exportToJSON()" title="Export to JSON"><i class="fas fa-file-code"></i> JSON</button>
     <button onclick="exportToCSV()" title="Export to CSV"><i class="fas fa-file-csv"></i> CSV</button>
     <button onclick="generateMonthlyReport()" title="Monthly Report"><i class="fas fa-chart-bar"></i> Report</button>
 </div>
+</div>
+
+<div class="search-container">
+<input
+type="text"
+id="searchInput"
+placeholder="Search expenses..."
+onkeyup="searchExpenses()"
+/>
 </div>
 
 <table>
@@ -139,6 +187,9 @@
 </div>
 
 <script src="script.js"></script>
+
+<div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+<div id="notification-container"></div>
 
 </body>
 </html>
