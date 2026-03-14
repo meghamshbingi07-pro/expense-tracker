@@ -19,6 +19,41 @@ btn.textContent = theme === "light"
 : "🌙 Switch to Light";
 }
 
+function getChartThemeColors() {
+    const isLightMode = document.body.classList.contains("light-mode");
+    return {
+        textColor: isLightMode ? "#10234d" : "#cbd5e1",
+        gridColor: isLightMode ? "rgba(15, 35, 77, 0.16)" : "rgba(255,255,255,0.08)",
+        chartAreaBg: isLightMode ? "#f5f8ff" : "rgba(15, 23, 42, 0.42)",
+        lineBorder: isLightMode ? "#1d4ed8" : "#ff6ec4",
+        lineFill: isLightMode ? "rgba(29, 78, 216, 0.18)" : "rgba(255, 110, 196, 0.2)",
+        barColors: isLightMode
+            ? ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0E7490"]
+            : ["#3B82F6", "#22C55E", "#F59E0B", "#EF4444", "#A855F7", "#14B8A6"]
+    };
+}
+
+const chartAreaBackgroundPlugin = {
+    id: "chartAreaBackground",
+    beforeDraw(chart, _args, pluginOptions) {
+        const chartArea = chart.chartArea;
+        if (!chartArea) {
+            return;
+        }
+
+        const color = pluginOptions?.color;
+        if (!color) {
+            return;
+        }
+
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+        ctx.restore();
+    }
+};
+
 function applyTheme(theme){
 if (theme === "light") {
     document.body.classList.add("light-mode");
@@ -28,6 +63,11 @@ if (theme === "light") {
 
 localStorage.setItem("theme", theme);
 updateThemeButton(theme);
+
+// Re-render active charts so axis and legend text stay readable per theme.
+if (allExpenses.length) {
+    applyActiveFilters();
+}
 }
 
 function toggleTheme(){
@@ -57,24 +97,39 @@ if (budgetProgress) {
 if (budgetText) {
     budgetText.innerText = `₹${total.toLocaleString()} spent`;
 }
+
+if(total > monthlyBudget){
+showNotification("⚠ Budget exceeded!");
+}
 }
 
 function animateValue(id,start,end,duration,prefix=""){
-    if (start === end) {
-        document.getElementById(id).innerText = prefix + end.toLocaleString();
+    const target = document.getElementById(id);
+    if (!target) {
         return;
     }
-    let range=end-start;
-    let current=start;
-    let increment=end>start?1:-1;
-    let stepTime=Math.abs(Math.floor(duration/range));
-    let timer=setInterval(function(){
-        current+=increment;
-        document.getElementById(id).innerText=prefix + current.toLocaleString();
-        if(current==end){
-            clearInterval(timer);
+
+    if (start === end) {
+        target.innerText = prefix + end.toLocaleString();
+        return;
+    }
+
+    const startTime = performance.now();
+    const totalDuration = Math.max(180, duration);
+
+    function tick(currentTime) {
+        const progress = Math.min((currentTime - startTime) / totalDuration, 1);
+        // Ease out for a snappy finish while keeping larger totals smooth.
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = Math.round(start + (end - start) * eased);
+        target.innerText = prefix + value.toLocaleString();
+
+        if (progress < 1) {
+            requestAnimationFrame(tick);
         }
-    },stepTime);
+    }
+
+    requestAnimationFrame(tick);
 }
 
 function showToast(message, type = "success") {
@@ -236,6 +291,11 @@ function renderFilteredTable(list){
 
     table.innerHTML = "";
 
+    if(list.length === 0){
+        table.innerHTML = "<tr><td colspan='5'>No expenses yet</td></tr>";
+        return;
+    }
+
     list.forEach((e,index)=>{
         const deleteArg = e.id === undefined ? index : e.id;
         table.innerHTML += `
@@ -245,8 +305,8 @@ function renderFilteredTable(list){
 <td>${e.date}</td>
 <td>${e.description}</td>
 <td>
-    <button onclick="editExpense(${deleteArg})" class="edit-btn" title="Edit">✏️</button>
-    <button onclick="deleteExpense(${deleteArg})" class="delete-btn" title="Delete">🗑️</button>
+    <button onclick="editExpense(${deleteArg})" class="action-btn edit-btn" title="Edit">✏️</button>
+    <button onclick="deleteExpense(${deleteArg})" class="action-btn delete-btn" title="Delete">🗑️</button>
 </td>
 </tr>
 `;
@@ -265,6 +325,11 @@ function updateDashboard(data = allExpenses){
     if (transactionEl) {
         transactionEl.innerText = data.length;
     }
+
+    updateTopCategory(data);
+}
+
+function updateTopCategory(data = allExpenses){
 
     const categoryTotals = {};
 
@@ -292,14 +357,10 @@ function renderFilteredView(expensesToRender, animateCounters = false) {
 
     if (animateCounters) {
         const total = expensesToRender.reduce((sum, exp) => sum + Number(exp.amount), 0);
-        animateValue("totalExpense", 0, total, 800, "₹");
-        animateValue("totalTransactions", 0, expensesToRender.length, 800);
+        animateValue("totalExpense", 0, total, 340, "₹");
+        animateValue("totalTransactions", 0, expensesToRender.length, 520);
+        updateTopCategory(expensesToRender);
     } else {
-        updateDashboard(expensesToRender);
-    }
-
-    if (animateCounters) {
-        // Keep top category in sync when counters animate.
         updateDashboard(expensesToRender);
     }
 
@@ -330,46 +391,49 @@ function getEmoji(category){
 }
 
 async function populateSampleData() {
+    const now = new Date();
+    const isoDateDaysAgo = (daysAgo) => {
+        const d = new Date(now);
+        d.setDate(now.getDate() - daysAgo);
+        return d.toISOString().split("T")[0];
+    };
+
     const sampleExpenses = [
-        // January
-        { amount: 900, category: "Rent", date: "2024-01-05", description: "January rent" },
-        { amount: 120, category: "Food", date: "2024-01-12", description: "Groceries" },
-        { amount: 300, category: "Entertainment", date: "2024-01-20", description: "Concert" },
-        // February
-        { amount: 1100, category: "Travel", date: "2024-02-03", description: "Train tickets" },
-        { amount: 250, category: "Bills", date: "2024-02-10", description: "Water bill" },
-        { amount: 400, category: "Shopping", date: "2024-02-18", description: "Valentine gift" },
-        // March (existing data)
-        { amount: 450, category: "Food", date: "2024-03-01", description: "Lunch at restaurant" },
-        { amount: 1200, category: "Travel", date: "2024-03-02", description: "Flight tickets" },
-        { amount: 850, category: "Shopping", date: "2024-03-03", description: "New clothes" },
-        { amount: 2500, category: "Bills", date: "2024-03-04", description: "Electricity bill" },
-        { amount: 320, category: "Entertainment", date: "2024-03-05", description: "Movie tickets" },
-        { amount: 150, category: "Transportation", date: "2024-03-06", description: "Uber ride" },
-        { amount: 780, category: "Healthcare", date: "2024-03-07", description: "Doctor visit" },
-        { amount: 1200, category: "Education", date: "2024-03-08", description: "Online course" },
-        { amount: 650, category: "Groceries", date: "2024-03-09", description: "Weekly groceries" },
-        { amount: 1800, category: "Utilities", date: "2024-03-10", description: "Internet bill" },
-        { amount: 290, category: "Food", date: "2024-03-11", description: "Coffee and snacks" },
-        { amount: 950, category: "Shopping", date: "2024-03-12", description: "Electronics" },
-        { amount: 420, category: "Transportation", date: "2024-03-13", description: "Gas refill" },
-        { amount: 680, category: "Entertainment", date: "2024-03-14", description: "Concert tickets" },
-        { amount: 1100, category: "Travel", date: "2024-03-15", description: "Hotel booking" },
-        { amount: 350, category: "Groceries", date: "2024-03-16", description: "Fresh produce" },
-        { amount: 2200, category: "Bills", date: "2024-03-17", description: "Rent payment" },
-        { amount: 180, category: "Food", date: "2024-03-18", description: "Breakfast" },
-        { amount: 750, category: "Healthcare", date: "2024-03-19", description: "Pharmacy" },
-        { amount: 520, category: "Shopping", date: "2024-03-20", description: "Home decor" }
+        // Student-friendly data over the last 3 months
+        { amount: 2800, category: "Bills", date: isoDateDaysAgo(82), description: "Hostel rent share" },
+        { amount: 350, category: "Utilities", date: isoDateDaysAgo(79), description: "Mobile recharge and data" },
+        { amount: 210, category: "Food", date: isoDateDaysAgo(76), description: "Canteen meals" },
+        { amount: 420, category: "Groceries", date: isoDateDaysAgo(72), description: "Monthly snacks and toiletries" },
+        { amount: 190, category: "Education", date: isoDateDaysAgo(68), description: "Lab printouts" },
+        { amount: 560, category: "Transportation", date: isoDateDaysAgo(64), description: "City bus pass" },
+        { amount: 260, category: "Entertainment", date: isoDateDaysAgo(60), description: "Movie and popcorn" },
+        { amount: 330, category: "Shopping", date: isoDateDaysAgo(56), description: "Notebook set and pens" },
+        { amount: 2450, category: "Bills", date: isoDateDaysAgo(52), description: "Hostel rent share" },
+        { amount: 140, category: "Healthcare", date: isoDateDaysAgo(49), description: "Cold medicines" },
+        { amount: 680, category: "Transportation", date: isoDateDaysAgo(45), description: "Train ticket home" },
+        { amount: 520, category: "Education", date: isoDateDaysAgo(41), description: "Semester reference books" },
+        { amount: 230, category: "Food", date: isoDateDaysAgo(36), description: "Group lunch after exam" },
+        { amount: 470, category: "Groceries", date: isoDateDaysAgo(32), description: "Hostel pantry refill" },
+        { amount: 300, category: "Utilities", date: isoDateDaysAgo(28), description: "Wi-Fi contribution" },
+        { amount: 240, category: "Entertainment", date: isoDateDaysAgo(24), description: "College fest ticket" },
+        { amount: 380, category: "Shopping", date: isoDateDaysAgo(20), description: "USB drive and calculator" },
+        { amount: 2650, category: "Bills", date: isoDateDaysAgo(16), description: "Hostel rent share" },
+        { amount: 175, category: "Food", date: isoDateDaysAgo(12), description: "Cafe study snacks" },
+        { amount: 250, category: "Education", date: isoDateDaysAgo(8), description: "Assignment binding" },
+        { amount: 620, category: "Transportation", date: isoDateDaysAgo(6), description: "Auto and metro for internship" },
+        { amount: 160, category: "Healthcare", date: isoDateDaysAgo(4), description: "First-aid supplies" },
+        { amount: 450, category: "Groceries", date: isoDateDaysAgo(3), description: "Weekly groceries shared" },
+        { amount: 220, category: "Food", date: isoDateDaysAgo(1), description: "Dinner with classmates" }
     ];
 
     try {
-        // clear all existing entries unconditionally
+        // Seed only when DB is empty so real user data is preserved.
         const response = await fetch(API_URL);
         const existingData = await response.json();
-        for (const item of existingData) {
-            await fetch(`${API_URL}/${item.id}`, { method: "DELETE" });
+        if (Array.isArray(existingData) && existingData.length > 0) {
+            return;
         }
-        // repopulate from scratch
+
         for (const expense of sampleExpenses) {
             await fetch(API_URL, {
                 method: "POST",
@@ -377,7 +441,7 @@ async function populateSampleData() {
                 body: JSON.stringify(expense)
             });
         }
-    } catch (error) {
+    } catch {
         console.log("Database not ready yet, will retry...");
     }
 }
@@ -515,15 +579,17 @@ applyActiveFilters(true)
 
 function loadChart(expenses){
 
+const monthlyCanvas = document.getElementById("monthlyChart");
+if(!monthlyCanvas){
+return;
+}
+
 if(chart){
 chart.destroy()
 }
 
 // Monthly chart with only existing months
 const monthlyTotalsByKey = {};
-
-// Category data
-const categoryData = {}
 
 expenses.forEach(exp => {
     // Calculate monthly totals
@@ -533,8 +599,6 @@ expenses.forEach(exp => {
     const monthKey = `${year}-${month}`;
     monthlyTotalsByKey[monthKey] = (monthlyTotalsByKey[monthKey] || 0) + Number(exp.amount);
     
-    // Calculate category totals
-    categoryData[exp.category] = (categoryData[exp.category] || 0) + exp.amount;
 })
 
 const sortedMonthKeys = Object.keys(monthlyTotalsByKey).sort((a, b) => a.localeCompare(b));
@@ -544,41 +608,46 @@ const monthLabels = sortedMonthKeys.map(key => {
     return date.toLocaleString("default", { month: "short", year: "2-digit" });
 });
 const monthValues = sortedMonthKeys.map(key => monthlyTotalsByKey[key]);
+const themeColors = getChartThemeColors();
 
-chart=new Chart(document.getElementById("expenseChart"),{
+chart=new Chart(monthlyCanvas,{
+    plugins: [chartAreaBackgroundPlugin],
     type:"line",
     data:{
         labels:monthLabels,
         datasets:[{
             label:"Monthly Expenses",
             data:monthValues,
-            backgroundColor:"rgba(255, 110, 196, 0.2)",
-            borderColor:"#ff6ec4",
+            backgroundColor: themeColors.lineFill,
+            borderColor: themeColors.lineBorder,
             borderWidth:3,
             fill:true,
-            tension:0.4
+            tension:0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: themeColors.lineBorder,
+            pointBorderColor: themeColors.lineBorder
         }]
     },
     options:{
         responsive:true,
+        maintainAspectRatio: false,
+        devicePixelRatio: window.devicePixelRatio || 2,
         animation:{
-            duration:1200,
-            easing:'easeOutQuart'
+            duration:1000,
+            easing:"easeOutQuart"
         },
         plugins:{
+            chartAreaBackground: {
+                color: themeColors.chartAreaBg
+            },
             title:{
-                display:true,
-                text:'Monthly Expense Trends',
-                color:'white',
-                font:{
-                    size:16,
-                    weight:'bold'
-                }
+                display:false
             },
             legend:{
                 position:'bottom',
                 labels:{
-                    color:'#ffffff'
+                    color: themeColors.textColor
                 }
             }
         },
@@ -586,15 +655,21 @@ chart=new Chart(document.getElementById("expenseChart"),{
             y:{
                 beginAtZero:true,
                 ticks:{
-                    color:'white',
+                    color: themeColors.textColor,
                     callback: function(value) {
                         return '₹' + value.toLocaleString();
                     }
+                },
+                grid: {
+                    color: themeColors.gridColor
                 }
             },
             x:{
                 ticks:{
-                    color:'white'
+                    color: themeColors.textColor
+                },
+                grid: {
+                    color: themeColors.gridColor
                 }
             }
         }
@@ -605,10 +680,16 @@ updateCharts(expenses)
 }
 
 function updateCharts(expenses = allExpenses){
-if(!categoryChart){
-    const ctx = document.getElementById("categoryChart");
+const ctx = document.getElementById("categoryChart");
+if(!ctx){
+return;
+}
 
+const themeColors = getChartThemeColors();
+
+if(!categoryChart){
     categoryChart = new Chart(ctx, {
+    plugins: [chartAreaBackgroundPlugin],
     type: "bar",
 
     data: {
@@ -616,14 +697,7 @@ if(!categoryChart){
     datasets: [{
     label: "Expense Amount",
     data: [],
-    backgroundColor: [
-    "#3B82F6",
-    "#22C55E",
-    "#F59E0B",
-    "#EF4444",
-    "#A855F7",
-    "#14B8A6"
-    ],
+    backgroundColor: themeColors.barColors,
     borderRadius: 8
     }]
     },
@@ -633,21 +707,25 @@ if(!categoryChart){
     indexAxis: "y",
 
     responsive: true,
+    devicePixelRatio: window.devicePixelRatio || 2,
     maintainAspectRatio: false,
+    animation:{
+    duration:1000,
+    easing:"easeOutQuart"
+    },
 
     plugins: {
+
+    chartAreaBackground: {
+    color: themeColors.chartAreaBg
+    },
 
     legend: {
     display: false
     },
 
     title: {
-    display: true,
-    text: "Expenses by Category",
-    color: "#ffffff",
-    font: {
-    size: 16
-    }
+    display: false
     }
 
     },
@@ -656,16 +734,19 @@ if(!categoryChart){
 
     x: {
     ticks: {
-    color: "#ffffff"
+    color: themeColors.textColor,
+    callback: function(value) {
+    return "₹" + Number(value).toLocaleString();
+    }
     },
     grid: {
-    color: "rgba(255,255,255,0.05)"
+    color: themeColors.gridColor
     }
     },
 
     y: {
     ticks: {
-    color: "#ffffff"
+    color: themeColors.textColor
     },
     grid: {
     display: false
@@ -685,34 +766,58 @@ categoryTotals[e.category] =
 (categoryTotals[e.category] || 0) + Number(e.amount);
 });
 
-let labels = Object.keys(categoryTotals);
-let values = Object.values(categoryTotals);
+let sorted = Object.entries(categoryTotals)
+.sort((a,b)=>b[1]-a[1]);
+
+let top = sorted.slice(0,5);
+
+let other = sorted.slice(5);
+
+let otherTotal = other.reduce((sum,e)=>sum+e[1],0);
+
+if(otherTotal>0){
+top.push(["Other",otherTotal]);
+}
+
+let labels = top.map(e=>e[0]);
+let values = top.map(e=>e[1]);
 
 categoryChart.data.labels = labels;
 categoryChart.data.datasets[0].data = values;
+categoryChart.data.datasets[0].backgroundColor = themeColors.barColors;
+
+categoryChart.options.scales.x.ticks.color = themeColors.textColor;
+categoryChart.options.scales.y.ticks.color = themeColors.textColor;
+categoryChart.options.scales.x.grid.color = themeColors.gridColor;
+categoryChart.options.plugins.chartAreaBackground.color = themeColors.chartAreaBg;
 
 categoryChart.update();
 }
 
-async function initializeApp() {
-    await populateSampleData();
-    loadExpenses();
-    
-    // Add some sample activity log entries
-    setTimeout(() => {
-        const sampleActivities = [
-            "2 hours ago: Added ₹450 for Food - Lunch at restaurant",
-            "4 hours ago: Added ₹1200 for Travel - Flight tickets", 
-            "Yesterday: Added ₹850 for Shopping - New clothes",
-            "2 days ago: Added ₹2500 for Bills - Electricity bill",
-            "3 days ago: Added ₹320 for Entertainment - Movie tickets"
-        ];
-        
-        const activityLog = document.getElementById("activityLog");
-        sampleActivities.forEach(activity => {
-            activityLog.innerHTML += `<li>${activity}</li>`;
+function initializeApp() {
+    populateSampleData()
+        .then(() => {
+            loadExpenses();
+
+            // Add some sample activity log entries
+            setTimeout(() => {
+                const sampleActivities = [
+                    "2 hours ago: Added ₹450 for Food - Lunch at restaurant",
+                    "4 hours ago: Added ₹1200 for Travel - Flight tickets",
+                    "Yesterday: Added ₹850 for Shopping - New clothes",
+                    "2 days ago: Added ₹2500 for Bills - Electricity bill",
+                    "3 days ago: Added ₹320 for Entertainment - Movie tickets"
+                ];
+
+                const activityLog = document.getElementById("activityLog");
+                sampleActivities.forEach(activity => {
+                    activityLog.innerHTML += `<li>${activity}</li>`;
+                });
+            }, 1000);
+        })
+        .catch(() => {
+            loadExpenses();
         });
-    }, 1000);
 }
 
 // Edit expense function
@@ -790,7 +895,7 @@ function exportToJSON() {
     link.download = `expenses_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
     
     // Add to activity log
@@ -824,7 +929,7 @@ function exportToCSV() {
     link.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
     
     // Add to activity log
@@ -887,15 +992,17 @@ function generateMonthlyReport() {
     `;
     
     // Sort by month (newest first)
-    const sortedMonths = Object.keys(monthlyData).sort().reverse();
+    const sortedMonths = Object.keys(monthlyData).sort((a, b) => b.localeCompare(a));
     
     sortedMonths.forEach(monthKey => {
         const data = monthlyData[monthKey];
         const avgPerTransaction = (data.total / data.count).toFixed(2);
         
         // Find top category
-        const topCategory = Object.keys(data.categories).reduce((a, b) => 
-            data.categories[a] > data.categories[b] ? a : b
+        const categories = Object.keys(data.categories);
+        const topCategory = categories.reduce((a, b) =>
+            data.categories[a] > data.categories[b] ? a : b,
+            categories[0]
         );
         
         reportHTML += `

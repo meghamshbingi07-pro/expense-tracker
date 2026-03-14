@@ -5,7 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
-    <link rel="stylesheet" href="style.css?v=rm20260315">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=rm20260315b">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -17,7 +18,7 @@
 <h2>💰 Expense</h2>
 
 <ul>
-<li>📊 Dashboard</li>
+<li class="active">📊 Dashboard</li>
 <li>💸 Expenses</li>
 <li>📈 Analytics</li>
 <li>⚙ Settings</li>
@@ -27,7 +28,7 @@
 
 <div class="main">
 
-<div class="topbar">
+<div class="topbar header">
 
 <h1>Expense Dashboard</h1>
 
@@ -35,7 +36,7 @@
 🌙 Toggle Theme
 </button>
 
-<div class="expense-form">
+<div class="expense-form header-controls">
 
 <input type="number" id="amount" placeholder="Amount (₹)" min="1" step="0.01">
 <select id="category">
@@ -59,29 +60,29 @@
 
 </div>
 
-<div class="cards">
+<div class="dashboard-cards">
 
-<div class="card">
-<h3>Total Expense</h3>
+<div class="dashboard-card">
+<h3>💰 Total Expense</h3>
 <p id="totalExpense">₹0</p>
 </div>
 
-<div class="card">
-<h3>Transactions</h3>
+<div class="dashboard-card">
+<h3>📊 Transactions</h3>
 <p id="totalTransactions">0</p>
 </div>
 
-<div class="card">
-<h3>Top Category</h3>
+<div class="dashboard-card">
+<h3>🏆 Top Category</h3>
 <p id="topCategory">-</p>
 </div>
 
 <div class="dashboard-card">
-    <h3>Monthly Budget</h3>
+    <h3>🎯 Monthly Budget</h3>
     <h2 id="budgetAmount">₹20000</h2>
 
     <div class="progress-bar">
-        <div id="budgetProgress"></div>
+        <div id="budgetProgress" class="progress-fill"></div>
     </div>
 
     <p id="budgetText">₹0 spent</p>
@@ -91,17 +92,19 @@
 
 <div class="analytics">
 
-<div class="chart-box">
-<canvas id="expenseChart"></canvas>
+<div class="chart-container">
+<h3>Monthly Expense Trends</h3>
+<canvas id="monthlyChart"></canvas>
 </div>
 
-<div class="chart-card">
+<div class="chart-container">
+<h3>Expenses by Category</h3>
 <canvas id="categoryChart"></canvas>
 </div>
 
-<div class="chart-card">
+<div class="chart-container">
 <h3>Category Summary</h3>
-<div id="categorySummary"></div>
+<div class="category-summary-container" id="categorySummary"></div>
 </div>
 
 <div class="table-box">
@@ -167,7 +170,7 @@ onkeyup="searchExpenses()"
 </tr>
 </thead>
 
-<tbody id="expenseList"></tbody>
+<tbody id="expenseTable"></tbody>
 
 </table>
 
@@ -186,7 +189,7 @@ onkeyup="searchExpenses()"
 
 </div>
 
-<script src="script.js"></script>
+<script src="script.js?v=rm20260315b"></script>
 
 <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 <div id="notification-container"></div>
